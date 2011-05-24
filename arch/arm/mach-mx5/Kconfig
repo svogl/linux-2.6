@@ -34,6 +34,13 @@ config MACH_MX51_3DS
 	  Include support for MX51 3-Stack platform. This includes specific
 	  configurations for the board and its peripherals.
 
+config MACH_SBC51
+	bool "Support Bluetechnix SBC51 single board computer"
+	select ARCH_MX51
+	select MACH_MX51_3DS
+	help
+	  Include support for the Bluetechnix i.mx51 board; heavily based on the MX51 3-Stack platform.
+
 config MACH_MX51_BABBAGE
 	bool "Support MX51 BABBAGE platforms"
 	select ARCH_MX51
