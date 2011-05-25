@@ -11,9 +11,9 @@ obj-$(CONFIG_ARCH_MX53) += clock.o suspend.o mx53_wp.o pm_da9053.o
 obj-$(CONFIG_ARCH_MX50) += clock_mx50.o dmaengine.o dma-apbh.o mx50_suspend.o mx50_ddr_freq.o mx50_wfi.o
 
 ifeq ($(CONFIG_MACH_SBC51),y)
-	obj-$(CONFIG_MACH_MX51_3DS) += mx51_sbc51.o mx51_3stack_gpio.o mx51_3stack_pmic_mc13892.o
+	obj-$(CONFIG_MACH_MX51_3DS) += mx51_sbc51.o mx51_sbc51_gpio.o mx51_3stack_pmic_mc13892.o
 else
-#	obj-$(CONFIG_MACH_MX51_3DS) += mx51_3stack.o mx51_3stack_gpio.o mx51_3stack_pmic_mc13892.o
+	obj-$(CONFIG_MACH_MX51_3DS) += mx51_3stack.o mx51_3stack_gpio.o mx51_3stack_pmic_mc13892.o
 endif
 obj-$(CONFIG_MACH_MX51_BABBAGE) += mx51_babbage.o mx51_babbage_pmic_mc13892.o
 obj-$(CONFIG_MACH_MX53_EVK) += mx53_evk.o mx53_evk_pmic_mc13892.o
