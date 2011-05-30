@@ -10,6 +10,7 @@
  */
 #include <linux/module.h>
 #include <linux/mtd/nand.h>
+#include <generated/autoconf.h>
 /*
 *	Chip ID list
 *
