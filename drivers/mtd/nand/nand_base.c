@@ -47,7 +47,7 @@
 #include <linux/bitops.h>
 #include <linux/leds.h>
 #include <asm/io.h>
-
+#include <generated/autoconf.h>
 #ifdef CONFIG_MTD_PARTITIONS
 #include <linux/mtd/partitions.h>
 #endif
@@ -2897,7 +2897,11 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		mtd->oobsize = mtd->writesize / 32;
 		busw = type->options & NAND_BUSWIDTH_16;
 	}
-
+#if defined(CONFIG_MACH_SBC51)
+    if (*maf_id == 0x2c && dev_id == 0x48) {
+		busw = 0;
+	}
+#endif
 	/* Try to identify manufacturer */
 	for (maf_idx = 0; nand_manuf_ids[maf_idx].id != 0x0; maf_idx++) {
 		if (nand_manuf_ids[maf_idx].id == *maf_id)

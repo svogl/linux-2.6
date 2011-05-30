@@ -13,7 +13,7 @@
 
 #include <asm/sizes.h>
 #include <linux/mtd/nand.h>
-
+#include <generated/autoconf.h>
 #include "nand_device_info.h"
 
 /*
@@ -1605,6 +1605,27 @@ static struct nand_device_info nand_device_info_table_bch_ecc12[] __initdata = {
 	.tRHOH_in_ns              = 15,
 	"MT29F128G08CJAAA (16GB, 2CE)",
 	},
+#if defined(CONFIG_MACH_SBC51)
+	{
+	.end_of_table             = false,
+	.manufacturer_code        = 0x2c,
+	.device_code              = 0x48,
+	.cell_technology          = NAND_DEVICE_CELL_TECH_MLC,
+	.chip_size_in_bytes       = 2LL*SZ_1G,
+	.block_size_in_pages      = 256,
+	.page_total_size_in_bytes = 4*SZ_1K + 218,
+	.ecc_strength_in_bits     = 8,
+	.ecc_size_in_bytes        = 512,
+	.data_setup_in_ns         = 50,
+	.data_hold_in_ns          = 30,
+	.address_setup_in_ns      = 70,
+	.gpmi_sample_delay_in_ns  = 6,
+	.tREA_in_ns               = 40,
+	.tRLOH_in_ns              = 5,
+	.tRHOH_in_ns              = 15,
+	"MT29F16G08CBABA (2GB, 1CE)",
+	},
+#else
 	{
 	.end_of_table             = false,
 	.manufacturer_code        = 0x2c,
@@ -1624,6 +1645,7 @@ static struct nand_device_info nand_device_info_table_bch_ecc12[] __initdata = {
 	.tRHOH_in_ns              = 15,
 	"MT29F16G08CBABA (2GB, 1CE)",
 	},
+#endif
 	{
 	.end_of_table             = false,
 	.manufacturer_code        = 0x2c,
