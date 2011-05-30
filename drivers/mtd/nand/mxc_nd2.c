@@ -27,7 +27,8 @@
 #include <asm/mach/flash.h>
 #include "mxc_nd2.h"
 #include "nand_device_info.h"
-
+#include <generated/autoconf.h>
+#include <generated/mach-types.h>
 #define DVR_VER "3.0"
 
 /* Global address Variables */
@@ -129,6 +130,7 @@ static irqreturn_t mxc_nfc_irq(int irq, void *dev_id)
 
 static void mxc_nand_bi_swap(struct mtd_info *mtd)
 {
+#if ! defined(CONFIG_MACH_SBC51)
 	u16 ma, sa, nma, nsa;
 
 	if (!IS_LARGE_PAGE_NAND)
@@ -146,6 +148,7 @@ static void mxc_nand_bi_swap(struct mtd_info *mtd)
 
 	__raw_writew(nma, BAD_BLK_MARKER_MAIN);
 	__raw_writew(nsa, BAD_BLK_MARKER_SP);
+#endif
 }
 
 static void nfc_memcpy(void *dest, void *src, int len)
