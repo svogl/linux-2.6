@@ -41,6 +41,12 @@ config MACH_SBC51
 	help
 	  Include support for the Bluetechnix i.mx51 board; heavily based on the MX51 3-Stack platform.
 
+config MACH_TX51
+	bool "Support Ka-Ro TX51"
+	select ARCH_MX51
+	help
+	  Include support for the Ka-Ro tx51 board.
+
 config MACH_MX51_BABBAGE
 	bool "Support MX51 BABBAGE platforms"
 	select ARCH_MX51
