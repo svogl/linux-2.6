@@ -25,6 +25,7 @@
 #include <linux/pmic_external.h>
 #include <linux/ipu.h>
 #include <linux/pwm_backlight.h>
+#include <linux/fb.h>
 #include <linux/fec.h>
 
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
@@ -400,12 +401,56 @@ static struct imx_nfc_platform_data imx_nfc_platform_data = {
 
 #endif /* i.MX MTD NAND Flash Controller */
 
+static struct fb_videomode tve_video_modes[] = {
+	{
+		/* PAL TV output */
+		"TV-PAL", 50, 720, 576, 74074,
+		132, 11,
+		22, 26,
+		1, 1,
+		FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT | FB_SYNC_EXT,
+		FB_VMODE_INTERLACED | FB_VMODE_ODD_FLD_FIRST,
+		0,
+	},
+	{
+		/* NTSC TV output */
+		"TV-NTSC", 60, 720, 480, 74074,
+		122, 15,
+		18, 26,
+		1, 1,
+		FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT | FB_SYNC_EXT,
+		FB_VMODE_INTERLACED,
+		0,
+	},
+};
+
+static struct fb_videomode fb_lcd_mode[] = {{
+		.name = "G-ETV570G0DMU",
+		.pixclock	= 39722,
+
+		.xres		= 640,
+		.yres		= 480,
+
+		.hsync_len	= 96,
+		.left_margin	= 48,
+		.right_margin	= 36,
+
+		.vsync_len	= 2,
+		.upper_margin	= 33,
+		.lower_margin	= 11,	
+}};
 
 static struct mxc_fb_platform_data fb_data[] = {
 	{
-	 .interface_pix_fmt = IPU_PIX_FMT_RGB666,
+	 .interface_pix_fmt = IPU_PIX_FMT_RGB24,
+	 .mode_str = "G-ETV570G0DMU",
+	 .mode = fb_lcd_mode,
+	 .num_modes = ARRAY_SIZE(fb_lcd_mode),
 	 },
 	{
+	 .mode_str = "TV-PAL",
+	 .mode = tve_video_modes,
+	 .num_modes = ARRAY_SIZE(tve_video_modes),
 	 .interface_pix_fmt = IPU_PIX_FMT_YUV444,
 	 },
 };
