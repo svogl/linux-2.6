@@ -40,6 +40,15 @@ module_param(register_main_mtd, int, 0400);
 static int map_io_buffers = true;
 module_param(map_io_buffers, int, 0600);
 
+/* add our owner bbt descriptor */
+static uint8_t scan_ff_pattern[] = { 0xff };
+static struct nand_bbt_descr gpmi_bbt_descr = {
+	.options	= 0,
+	.offs		= 0,
+	.len		= 1,
+	.pattern	= scan_ff_pattern
+};
+
 /**
  * mil_outgoing_buffer_dma_begin() - Begins DMA on an outgoing buffer.
  *
@@ -826,56 +835,6 @@ exit_payload:
 }
 
 /**
- * mil_hook_read_oob() - Hooked MTD Interface read_oob().
- *
- * This function is a veneer that replaces the function originally installed by
- * the NAND Flash MTD code. See the description of the raw_oob_mode field in
- * struct mil for more information about this.
- *
- * @mtd:   A pointer to the MTD.
- * @from:  The starting address to read.
- * @ops:   Describes the operation.
- */
-static int mil_hook_read_oob(struct mtd_info *mtd,
-					loff_t from, struct mtd_oob_ops *ops)
-{
-	register struct nand_chip  *chip = mtd->priv;
-	struct gpmi_nfc_data       *this = chip->priv;
-	struct mil                 *mil  = &this->mil;
-	int                        ret;
-
-	mil->raw_oob_mode = ops->mode == MTD_OOB_RAW;
-	ret = mil->hooked_read_oob(mtd, from, ops);
-	mil->raw_oob_mode = false;
-	return ret;
-}
-
-/**
- * mil_hook_write_oob() - Hooked MTD Interface write_oob().
- *
- * This function is a veneer that replaces the function originally installed by
- * the NAND Flash MTD code. See the description of the raw_oob_mode field in
- * struct mil for more information about this.
- *
- * @mtd:   A pointer to the MTD.
- * @to:    The starting address to write.
- * @ops:   Describes the operation.
- */
-static int mil_hook_write_oob(struct mtd_info *mtd,
-					loff_t to, struct mtd_oob_ops *ops)
-{
-	register struct nand_chip  *chip = mtd->priv;
-	struct gpmi_nfc_data       *this = chip->priv;
-	struct mil                 *mil  = &this->mil;
-	int                        ret;
-
-	mil->raw_oob_mode = ops->mode == MTD_OOB_RAW;
-	ret = mil->hooked_write_oob(mtd, to, ops);
-	mil->raw_oob_mode = false;
-	return ret;
-}
-
-/**
  * mil_hook_block_markbad() - Hooked MTD Interface block_markbad().
  *
  * This function is a veneer that replaces the function originally installed by
@@ -966,12 +925,6 @@ static int mil_hook_block_markbad(struct mtd_info *mtd, loff_t ofs)
  * caller wants an ECC-based or raw view of the page is not propagated down to
  * this driver.
  *
- * Since our OOB *is* covered by ECC, we need this information. So, we hook the
- * ecc.read_oob and ecc.write_oob function pointers in the owning
- * struct mtd_info with our own functions. These hook functions set the
- * raw_oob_mode field so that, when control finally arrives here, we'll know
- * what to do.
- *
  * @mtd:     A pointer to the owning MTD.
  * @nand:    A pointer to the owning NAND Flash MTD.
  * @page:    The page number to read.
@@ -984,69 +937,30 @@ static int mil_ecc_read_oob(struct mtd_info *mtd, struct nand_chip *nand,
 {
 	struct gpmi_nfc_data      *this     = nand->priv;
 	struct physical_geometry  *physical = &this->physical_geometry;
-	struct mil                *mil      = &this->mil;
 	struct boot_rom_helper    *rom      =  this->rom;
-	int                       block_mark_column;
 
 	DEBUG(MTD_DEBUG_LEVEL2, "[gpmi_nfc ecc_read_oob] "
 		"page: 0x%06x, sndcmd: %s\n", page, sndcmd ? "Yes" : "No");
 
 	gpmi_nfc_add_event("> mil_ecc_read_oob", 1);
 
-	/*
-	 * First, fill in the OOB buffer. If we're doing a raw read, we need to
-	 * get the bytes from the physical page. If we're not doing a raw read,
-	 * we need to fill the buffer with set bits.
-	 */
+	/* clear the OOB buffer */
+	memset(nand->oob_poi, ~0, mtd->oobsize);
 
-	if (mil->raw_oob_mode) {
-
-		/*
-		 * If control arrives here, we're doing a "raw" read. Send the
-		 * command to read the conventional OOB.
-		 */
-
-		nand->cmdfunc(mtd, NAND_CMD_READ0,
-				physical->page_data_size_in_bytes, page);
-
-		/* Read out the conventional OOB. */
-
-		nand->read_buf(mtd, nand->oob_poi, mtd->oobsize);
-
-	} else {
-
-		/*
-		 * If control arrives here, we're not doing a "raw" read. Fill
-		 * the OOB buffer with set bits.
-		 */
-
-		memset(nand->oob_poi, ~0, mtd->oobsize);
-
-	}
+	/* Read out the conventional OOB. */
+	nand->cmdfunc(mtd, NAND_CMD_READ0,
+			physical->page_data_size_in_bytes, page);
+	nand->read_buf(mtd, nand->oob_poi, mtd->oobsize);
 
 	/*
 	 * Now, we want to make sure the block mark is correct. In the
 	 * Swapping/Raw case, we already have it. Otherwise, we need to
 	 * explicitly read it.
 	 */
-
-	if (!(rom->swap_block_mark && mil->raw_oob_mode)) {
-
-		/* First, figure out where the block mark is. */
-
-		if (rom->swap_block_mark)
-			block_mark_column = physical->page_data_size_in_bytes;
-		else
-			block_mark_column = 0;
-
-		/* Send the command to read the block mark. */
-
-		nand->cmdfunc(mtd, NAND_CMD_READ0, block_mark_column, page);
-
+	if (!rom->swap_block_mark) {
 		/* Read the block mark into the first byte of the OOB buffer. */
-
+		nand->cmdfunc(mtd, NAND_CMD_READ0, 0, page);
 		nand->oob_poi[0] = nand->read_byte(mtd);
-
 	}
 
 	/*
@@ -2452,6 +2366,7 @@ int gpmi_nfc_mil_init(struct gpmi_nfc_data *this)
 
 	nand->block_bad = mil_block_bad;
 	nand->scan_bbt  = mil_scan_bbt;
+	nand->badblock_pattern = &gpmi_bbt_descr;
 
 	/*
 	 * Error Recovery Functions
@@ -2549,13 +2464,6 @@ int gpmi_nfc_mil_init(struct gpmi_nfc_data *this)
 	 * Hook some operations at the MTD level. See the descriptions of the
 	 * saved function pointer fields for details about why we hook these.
 	 */
-
-	mil->hooked_read_oob      = mtd->read_oob;
-	mtd->read_oob             = mil_hook_read_oob;
-
-	mil->hooked_write_oob     = mtd->write_oob;
-	mtd->write_oob            = mil_hook_write_oob;
-
 	mil->hooked_block_markbad = mtd->block_markbad;
 	mtd->block_markbad        = mil_hook_block_markbad;
 
