@@ -1,0 +1,13 @@
+#
+# GPS
+#
+
+menu "GPS support"
+
+config BLT_SBC_GPS
+	tristate "SBC-i.MX51 GPS support"
+	depends on MACH_MX51_3DS
+	---help---
+         Say Y to support GPS module on ADP-SBC-i.MX51-COMM extension board.
+
+endmenu

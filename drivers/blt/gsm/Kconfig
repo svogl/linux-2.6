@@ -1,0 +1,14 @@
+#
+# GSM/GPRS
+#
+
+menu "GSM/GPRS support"
+
+config BLT_SBC_GSM
+	tristate "SBC-i.MX51 GSM/GPRS support"
+	depends on MACH_MX51_3DS
+	---help---
+         Say Y to support GSM/GPRS module on ADP-SBC-i.MX51-COMM extension
+	 board.
+
+endmenu
