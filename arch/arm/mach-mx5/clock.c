@@ -4759,7 +4759,7 @@ int __init mx51_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 	mxc_timer_init(&gpt_clk[0], base, MXC_INT_GPT);
 	return 0;
 }
-
+#if machine_is_mx53_evk() || machine_is_mx53_ard() || machine_is_mx53_smd() || machine_is_nitrogen_imx53() || machine_is_mx53_loco()
 int __init mx53_clocks_init(unsigned long ckil, unsigned long osc, unsigned long ckih1, unsigned long ckih2)
 {
 	__iomem void *base;
@@ -5020,7 +5020,7 @@ int __init mx53_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 	mxc_timer_init(&gpt_clk[0], base, MXC_INT_GPT);
 	return 0;
 }
-
+#endif
 /*!
  * Setup cpu clock based on working point.
  * @param	wp	cpu freq working point
