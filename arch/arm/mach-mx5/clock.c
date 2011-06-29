@@ -23,6 +23,7 @@
 #include <linux/io.h>
 #include <asm/clkdev.h>
 #include <asm/div64.h>
+#include <generated/mach-types.h>
 #include <mach/hardware.h>
 #include <mach/common.h>
 #include <mach/clock.h>
