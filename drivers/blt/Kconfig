@@ -1,0 +1,10 @@
+# drivers/blt/Kconfig
+
+if ARCH_MXC
+
+menu "SBC-i.MX51 support drivers"
+source "drivers/blt/gps/Kconfig"
+source "drivers/blt/gsm/Kconfig"
+endmenu
+
+endif
