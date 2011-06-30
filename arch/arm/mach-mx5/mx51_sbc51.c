@@ -31,7 +31,6 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/map.h>
 #include <linux/mtd/partitions.h>
-
 #include <asm/mach/flash.h>
 #endif
 
@@ -47,6 +46,12 @@
 #include <mach/mmc.h>
 #include <mach/mxc_dvfs.h>
 #include <mach/i2c.h>
+
+#include <generated/autoconf.h>
+#if defined(CONFIG_ANDROID)
+#  include <linux/android_pmem.h>
+#  include <linux/usb/android_composite.h>
+#endif
 
 #include "devices.h"
 #include "iomux.h"
@@ -839,6 +844,92 @@ static struct mxc_audio_platform_data sgtl5000_data = {
 	.finit = mxc_sgtl5000_plat_finit,
 };
 
+
+#if defined(CONFIG_ANDROID)
+static struct android_pmem_platform_data android_pmem_data = {
+	.name = "pmem_adsp",
+	.size = SZ_32M,
+};
+
+static struct android_pmem_platform_data android_pmem_gpu_data = {
+	.name = "pmem_gpu",
+	.size = SZ_32M,
+	.cached = 1,
+};
+
+static char *usb_functions_ums[] = {
+	"usb_mass_storage",
+};
+
+static char *usb_functions_ums_adb[] = {
+	"usb_mass_storage",
+	"adb",
+};
+
+static char *usb_functions_rndis[] = {
+	"rndis",
+};
+
+static char *usb_functions_rndis_adb[] = {
+	"rndis",
+	"adb",
+};
+
+static char *usb_functions_all[] = {
+	"rndis",
+	"usb_mass_storage",
+	"adb"
+};
+
+static struct android_usb_product usb_products[] = {
+	{
+		.product_id	= 0x0c01,
+		.num_functions	= ARRAY_SIZE(usb_functions_ums),
+		.functions	= usb_functions_ums,
+	},
+	{
+		.product_id	= 0x0c02,
+		.num_functions	= ARRAY_SIZE(usb_functions_ums_adb),
+		.functions	= usb_functions_ums_adb,
+	},
+	{
+		.product_id	= 0x0c03,
+		.num_functions	= ARRAY_SIZE(usb_functions_rndis),
+		.functions	= usb_functions_rndis,
+	},
+	{
+		.product_id	= 0x0c04,
+		.num_functions	= ARRAY_SIZE(usb_functions_rndis_adb),
+		.functions	= usb_functions_rndis_adb,
+	},
+};
+
+static struct usb_mass_storage_platform_data mass_storage_data = {
+	.nluns		= 3,
+	.vendor		= "Freescale",
+	.product	= "Android Phone",
+	.release	= 0x0100,
+};
+
+static struct usb_ether_platform_data rndis_data = {
+	.vendorID	= 0x0bb4,
+	.vendorDescr	= "Freescale",
+};
+
+static struct android_usb_platform_data android_usb_data = {
+	.vendor_id      = 0x0bb4,
+	.product_id     = 0x0c01,
+	.version        = 0x0100,
+	.product_name   = "Android Phone",
+	.manufacturer_name = "Freescale",
+	.num_products = ARRAY_SIZE(usb_products),
+	.products = usb_products,
+	.num_functions = ARRAY_SIZE(usb_functions_all),
+	.functions = usb_functions_all,
+};
+
+#endif
+
 static void mxc_unifi_hardreset(int pin_level)
 {
 	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_EIM_D19), pin_level & 0x01);
@@ -1006,6 +1097,14 @@ static void __init mxc_board_init(void)
 #if defined(CONFIG_MXC_CAMERA_OV2655) || defined(CONFIG_MXC_CAMERA_OV2655_MODULE)
 #error TODO
         start_mclk();
+#endif
+
+#if defined(CONFIG_ANDROID)
+	mxc_register_device(&mxc_android_pmem_device, &android_pmem_data);
+	mxc_register_device(&mxc_android_pmem_gpu_device, &android_pmem_gpu_data);
+	mxc_register_device(&usb_mass_storage_device, &mass_storage_data);
+	mxc_register_device(&usb_rndis_device, &rndis_data);
+	mxc_register_device(&android_usb_device, &android_usb_data);	
 #endif
 }
 
