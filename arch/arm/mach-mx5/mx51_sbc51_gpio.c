@@ -664,6 +664,34 @@ static struct mxc_iomux_pin_cfg __initdata mxc_iomux_pins[] = {
 		MX51_PIN_OWIRE_LINE, IOMUX_CONFIG_GPIO,
 		0x8,
 	},
+
+
+	/* IO extender board */
+	{//outputs:
+		MX51_PIN_CSPI1_MISO, IOMUX_CONFIG_ALT3, // -> GPIO 4_23
+	},
+	{
+		MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_ALT3, 	// -> GPIO 4_24
+	},
+	{
+		MX51_PIN_CSPI1_SS1, IOMUX_CONFIG_ALT3, 	// -> GPIO 4_25
+	},
+	{
+		MX51_PIN_CSPI1_RDY, IOMUX_CONFIG_ALT3, 	// -> GPIO 4_26
+	},
+	{//inputs:
+		MX51_PIN_EIM_D20, IOMUX_CONFIG_ALT1, // -> GPIO 2_4
+	},
+	{
+		MX51_PIN_EIM_D21, IOMUX_CONFIG_ALT1, 	// -> GPIO 2_5 
+	},
+	{
+		MX51_PIN_EIM_D22, IOMUX_CONFIG_ALT1, 	// -> GPIO 2_6
+	},
+	{
+		MX51_PIN_EIM_D23, IOMUX_CONFIG_ALT1, 	// -> GPIO 2_7
+	},
+
 };
 
 static int __initdata enable_ata = { 0 };
@@ -746,7 +774,7 @@ void __init mx51_3stack_io_init(void)
 	/* sleepx as input */
 	gpio_request(IOMUX_TO_GPIO(MX51_PIN_GPIO1_6), "bluetooth sleepx");
 	gpio_direction_input(IOMUX_TO_GPIO(MX51_PIN_GPIO1_6));
-
+#if 0
 	/* GSM/GPRS: power down */
 	gpio_request(IOMUX_TO_GPIO(MX51_PIN_EIM_D22), "gsm pwr_on");
 	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_EIM_D22), 1);
@@ -769,5 +797,6 @@ void __init mx51_3stack_io_init(void)
 	/* GPS: timepulse */
 	gpio_request(IOMUX_TO_GPIO(MX51_PIN_OWIRE_LINE), "gps timepulse");
 	gpio_direction_input(IOMUX_TO_GPIO(MX51_PIN_OWIRE_LINE));
+#endif
 }
 

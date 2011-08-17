@@ -11,5 +11,10 @@ struct blt_gsm_platform_data {
 	void (*reset) (void);
 };
 
+struct blt_io_platform_data {
+	void (*power) (int on);
+	void (*reset) (void);
+};
+
 
 #endif

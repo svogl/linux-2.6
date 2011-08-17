@@ -1,0 +1,13 @@
+#
+# GSM/GPRS
+#
+
+menu "IO Port support"
+
+config BLT_SBC_IO
+	tristate "SBC-i.MX51 IO Card support"
+	depends on MACH_MX51_3DS
+	---help---
+         Say Y to support IO ports on IO extension.
+
+endmenu

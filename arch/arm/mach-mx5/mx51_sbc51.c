@@ -941,7 +941,6 @@ static void start_mclk(void)
 }
 #endif
 
-
 /*!
  * Board specific initialization.
  */
@@ -962,7 +961,8 @@ static void __init mxc_board_init(void)
 
 	mxc_register_device(&mxc_dma_device, NULL);
 	mxc_register_device(&mxc_wdt_device, NULL);
-	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
+	//conflicts with blt_io
+	//mxc_register_device(&mxcspi1_device, &mxcspi1_data);
 	mxc_register_device(&mxci2c_devices[0], &mxci2c_data);
 	mxc_register_device(&mxci2c_devices[1], &mxci2c_data);
 	mxc_register_device(&mxci2c_hs_device, &mxci2c_hs_data);
@@ -990,7 +990,6 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_sim_device, &sim_data);
 	mxc_register_device(&pata_fsl_device, &ata_data);
 	mxc_register_device(&mxc_alsa_spdif_device, &mxc_spdif_data);
-
 
 	mxc_register_device(&mxc_fec_device, NULL);
 	mxc_register_device(&mxc_nandv2_mtd_device, &mxc_nand_data);
