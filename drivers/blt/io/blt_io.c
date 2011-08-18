@@ -54,13 +54,14 @@ static void print_inputs(void)
 	int d23 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_EIM_D23));
 
 	printk(KERN_INFO "BLT IO IN  %d %d %d %d\n", d20, d21, d22, d23);
-
+	/*
 	d20 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_MISO));
 	d21 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0 ));
 	d22 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1 ));
 	d23 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_RDY ));
 
 	printk(KERN_INFO "BLT IO OUT %d %d %d %d\n", d20, d21, d22, d23);
+	*/
 }
 
 static void cd_work_func(struct work_struct *work)
@@ -83,12 +84,6 @@ struct  blt_io_device {
 
 typedef struct blt_io_device blt_io_device_t;
 
-static int blt_io_ioctl(struct inode *inode, struct file *fd,
-                           unsigned code, unsigned long value)
-{
-        /*todo */
-        return 0;
-}
 
 static ssize_t blt_io_read(struct file *fd, char __user *buf, size_t len,
                               loff_t *ptr)
@@ -98,7 +93,7 @@ static ssize_t blt_io_read(struct file *fd, char __user *buf, size_t len,
 }
 
 static ssize_t blt_io_write(struct file *fd, const char __user *buf,
-                               size_t len, loff_t *ptr)
+                               size_t len, loff_t *fpos)
 {
 	char line[80];
 	int ret, state;
@@ -112,23 +107,28 @@ static ssize_t blt_io_write(struct file *fd, const char __user *buf,
                 ret = -EINVAL;
                 goto error0;
 	}
+        printk(KERN_INFO " BLT IO WRITE: got %d bytes \n", len);
 
 	if (copy_from_user(line, buf, len)) {
+	        printk(KERN_INFO " BLT IO WRITE: copy fail \n");
                 ret = -EFAULT;
                 goto error0;
         }
 	// first byte: channel select
-        if ( (line[0]<='0' || line[0]>'3') ) {
-                ret = -EINVAL;
+        if ( (line[0]<'0' || line[0]>'3') ) {
+	        printk(KERN_INFO " BLT IO WRITE: 0 illegal %d\n", line[0]); // skip it..
+		*fpos++;
+                ret = 1;
                 goto error0;
         }
 	// second byte: state
-        if ( (line[1]<='0' || line[1]>'1') ) {
+        if ( (line[1]<'0' || line[1]>'1') ) {
+	        printk(KERN_INFO " BLT IO WRITE: 1 illegal \n");
                 ret = -EINVAL;
                 goto error0;
         }
 	state = ( line[1] == '1' );
-
+	
         printk(KERN_INFO " BLT IO WRITE: setting %d to %d\n", line[0]-'0', state);
 
 	switch (line[0]-'0') {
@@ -145,8 +145,13 @@ static ssize_t blt_io_write(struct file *fd, const char __user *buf,
 		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_RDY), state);
 		break;
 	}
-        
-	return 0;
+	if (line[2]=='\n') {
+		*fpos+=3;
+		return 3;
+	} else {
+		*fpos+=2;
+		return 2;
+	}
 error0:
 	return ret;
 }
@@ -158,6 +163,8 @@ static int blt_io_open(struct inode *inode, struct file *fd)
         blt_io_device_t *dev;
         id = iminor(inode);
 
+       	printk(KERN_INFO "OPENING... %d \n", id);
+	
         if (fd->private_data != NULL) {
         	printk(KERN_INFO "device already open!");
         	ret =-EBUSY;
@@ -174,9 +181,11 @@ static int blt_io_open(struct inode *inode, struct file *fd)
         fd->private_data = (void *)dev;
         ret = 0;
 
-	schedule_delayed_work(&cd_work, msecs_to_jiffies(1000));
+//	schedule_delayed_work(&cd_work, msecs_to_jiffies(1000));
 
 error0:
+       	printk(KERN_INFO "OPENED? %d \n", ret);
+
         return ret;
 }
 
@@ -186,7 +195,20 @@ static int blt_io_release(struct inode *inode, struct file *fd)
         unsigned int id;
         blt_io_device_t *dev;
         id = iminor(inode);
+        
+        kfree(fd->private_data);
         return 0;
+}
+
+static long blt_io_ioctl(struct file *file, unsigned int cmd,
+                          unsigned long arg)
+{
+	return 0;
+}
+static long blt_io_compat_ioctl(struct file *file,
+                                 unsigned int cmd, unsigned long arg)
+{
+	return 0;
 }
 
 static struct file_operations blt_io_fops = {
@@ -194,42 +216,44 @@ static struct file_operations blt_io_fops = {
         .llseek = no_llseek,
         .read = blt_io_read,
         .write = blt_io_write,
-        .ioctl = blt_io_ioctl,
+
+//        .unlocked_ioctl = blt_io_ioctl,
+#ifdef CONFIG_COMPAT
+//        .compat_ioctl = blt_io_compat_ioctl,
+#endif
         .open = blt_io_open,
         .release = blt_io_release,
 };
 
 static int blt_io_probe(struct platform_device *pdev)
 {
-	struct blt_io_platform_data *platform_data;
-
+	int ret=0;
 	printk(KERN_INFO "BLT IO PROBE");
-/*
-	platform_data = (struct blt_io_platform_data *)pdev->dev.platform_data;
 
-	if (platform_data->power) {
-		platform_data->power(1);
-	}
-*/	
 	INIT_DELAYED_WORK(&cd_work, cd_work_func);
 
 	print_inputs();
+	/*
+	cdev_init(&blt_io_cdev, &blt_io_fops);
+	blt_io_cdev.owner = THIS_MODULE;
+	blt_io_cdev.ops = &blt_io_fops;
+	ret = cdev_add(&blt_io_cdev, 0, 1);
+	if (ret<0) {
+		printk(KERN_WARNING " failed to add devices %d\n", ret);
+	}
 
+	*/
+	printk(KERN_INFO " add returned %d\n", ret);
 	return 0;
 }
 
 static int blt_io_remove(struct platform_device *pdev)
 {
-	struct blt_io_platform_data *platform_data;
-	/*
-	platform_data = (struct blt_io_platform_data *)pdev->dev.platform_data;
-
-	if (platform_data->power) {
-		platform_data->power(0);
-	}
-	*/
 	printk(KERN_INFO "BLT IO REMOVE");
 
+	//cdev_del(&blt_io_cdev);
+
+	printk(KERN_INFO "BLT IO REMOVED");
 	return 0;
 }
 
@@ -256,25 +280,18 @@ static irqreturn_t blt_io_irqhandler(int irq, void *dev_id)
 
 static __init int blt_io_init(void)
 {
+	int ret;
+	/*
 	int devnum = MKDEV(242, 0);
 
-	int ret = register_chrdev_region(devnum, 4, blt_io_driver.driver.name);
+	ret = register_chrdev_region(devnum, 1, blt_io_driver.driver.name);
 	if (ret<0) {
 		printk(KERN_WARNING " failed to register major %d\n", ret);
 	}
-
-	cdev_init(&blt_io_cdev, &blt_io_fops);
-	if (ret<0) {
-		printk(KERN_WARNING " cdev init failed with  %d\n", ret);
-	}
-	blt_io_cdev.owner = THIS_MODULE;
-	blt_io_cdev.ops = &blt_io_fops;
-
-
-	ret = cdev_add(&blt_io_cdev, 0, 1);
-	if (ret<0) {
-		printk(KERN_WARNING " failed to add devices %d\n", ret);
-	}
+	*/
+	ret = register_chrdev(242, "blt_io", &blt_io_fops);
+	if (ret)
+		return ret;
 
         ret |= gpio_request(IOMUX_TO_GPIO(MX51_PIN_CSPI1_MISO), blt_io_driver.driver.name );
 	if (ret<0) {
@@ -343,9 +360,14 @@ static __init int blt_io_init(void)
 
 static void __exit blt_io_exit(void)
 {
+	/*
 	int devnum = MKDEV(242, 0);
-	cdev_del(&blt_io_cdev);
-	unregister_chrdev_region(devnum, 4);
+	unregister_chrdev_region(devnum, 1);
+	*/
+	//i2c_del_driver(&i2cdev_driver);
+	//class_destroy(i2c_dev_class);
+
+	unregister_chrdev(242, "blt_io");
 
 	free_irq(IOMUX_TO_IRQ(MX51_PIN_EIM_D20) , NULL);
 	free_irq(IOMUX_TO_IRQ(MX51_PIN_EIM_D21) , NULL);
@@ -365,7 +387,10 @@ static void __exit blt_io_exit(void)
 	printk(KERN_INFO "Disabling IO module\n");
 
 	platform_device_unregister(&blt_io_device);
+	printk(KERN_INFO "Disabling IO module 2\n");
+	udelay(100);
 	platform_driver_unregister(&blt_io_driver);
+	printk(KERN_INFO "Disabling IO module 3\n");
 }
 
 module_init(blt_io_init);
