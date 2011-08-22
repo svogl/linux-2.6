@@ -54,14 +54,16 @@ static void print_inputs(void)
 	int d23 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_EIM_D23));
 
 	printk(KERN_INFO "BLT IO IN  %d %d %d %d\n", d20, d21, d22, d23);
-	/*
-	d20 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_MISO));
-	d21 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0 ));
-	d22 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1 ));
-	d23 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_RDY ));
+}
 
-	printk(KERN_INFO "BLT IO OUT %d %d %d %d\n", d20, d21, d22, d23);
-	*/
+static void format_inputs(char* buf)
+{
+	int d20 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_EIM_D20));
+	int d21 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_EIM_D21));
+	int d22 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_EIM_D22));
+	int d23 = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_EIM_D23));
+
+	sprintf(buf, "[%d,%d,%d,%d]\n", d20, d21, d22, d23);
 }
 
 static void cd_work_func(struct work_struct *work)
@@ -75,6 +77,8 @@ static void cd_work_func(struct work_struct *work)
 /* char device functions */
 
 static struct cdev blt_io_cdev;
+static struct completion read_complete;
+static int wait4irq=0;
 
 struct  blt_io_device {
 	int minor;
@@ -88,7 +92,23 @@ typedef struct blt_io_device blt_io_device_t;
 static ssize_t blt_io_read(struct file *fd, char __user *buf, size_t len,
                               loff_t *ptr)
 {
+	int ret;
+	char line[80];
         blt_io_device_t *dev = (blt_io_device_t *)fd->private_data;
+
+	init_completion(&read_complete);
+	wait4irq=1;
+	ret = wait_for_completion_interruptible_timeout(
+		&read_complete, 10 * HZ);
+	if (ret) {
+		format_inputs(line);
+		if ( len < strlen(line) ) {
+			return -ENOMEM; // increase user buffer!
+		}
+		copy_to_user(buf,line, strlen(line));
+		*ptr = strlen(line);
+		return strlen(line);
+	}
 	return 0;
 }
 
@@ -275,6 +295,10 @@ static irqreturn_t blt_io_irqhandler(int irq, void *dev_id)
 	printk(KERN_INFO "BLT IO IRQ %d\n", irq);
 	print_inputs();
 
+	if (wait4irq) {
+		complete(&read_complete);
+		wait4irq = 0;
+	}
         return IRQ_HANDLED;
 }
 
